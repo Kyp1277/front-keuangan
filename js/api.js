@@ -1,10 +1,9 @@
 // ============================================
 // api.js — Konfigurasi & Helper API
-// Ganti BASE_URL dengan URL Railway kamu setelah deploy
+// Backend API InfinityFree
 // ============================================
 
 const BASE_URL = "https://backkeuangan.page.gd";
- // ← Ganti saat deploy ke Railway
 
 // Helper utama: kirim request ke backend
 async function apiFetch(endpoint, method = "GET", body = null) {
