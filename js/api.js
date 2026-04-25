@@ -3,7 +3,8 @@
 // Ganti BASE_URL dengan URL Railway kamu setelah deploy
 // ============================================
 
-const BASE_URL = "http://localhost/umkm-keuangan"; // ← Ganti saat deploy ke Railway
+const BASE_URL = "https://backkeuangan.page.gd";
+ // ← Ganti saat deploy ke Railway
 
 // Helper utama: kirim request ke backend
 async function apiFetch(endpoint, method = "GET", body = null) {
