@@ -8,14 +8,33 @@ const BASE_URL = "https://backkeuangan.page.gd";
 // Helper utama: kirim request ke backend
 async function apiFetch(endpoint, method = "GET", body = null) {
   const token = localStorage.getItem("token");
+  const originalMethod = method.toUpperCase();
+  const url = new URL(`${BASE_URL}${endpoint}`);
 
-  const headers = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (token) {
+    url.searchParams.set("token", token);
+  }
 
-  const options = { method, headers };
-  if (body) options.body = JSON.stringify(body);
+  const requestBody = body ? { ...body } : null;
+  let requestMethod = originalMethod;
 
-  const res = await fetch(`${BASE_URL}${endpoint}`, options);
+  if (["PUT", "DELETE"].includes(originalMethod)) {
+    requestMethod = "POST";
+    if (requestBody) {
+      requestBody._method = originalMethod;
+    } else {
+      url.searchParams.set("_method", originalMethod);
+    }
+  }
+
+  const options = {
+    method: requestMethod,
+    headers: { "Content-Type": "text/plain;charset=UTF-8" },
+  };
+
+  if (requestBody) options.body = JSON.stringify(requestBody);
+
+  const res = await fetch(url.toString(), options);
   const json = await res.json();
 
   // Jika token expired / tidak valid → paksa logout
