@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kategori — KeuanganKu UMKM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/shared.css" />
+</head>
+<body>
+  <div id="sidebar-placeholder"></div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">🏷️ Manajemen Kategori</div>
+      <div class="topbar-right">
+        <button class="btn btn-primary" id="btnTambah">+ Tambah Kategori</button>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+        <!-- Pemasukan -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📈 Kategori Pemasukan</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Nama Kategori</th></tr></thead>
+              <tbody id="tblPemasukan">
+                <tr><td style="padding:2rem;text-align:center;color:#94a3b8">Memuat...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- Pengeluaran -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📉 Kategori Pengeluaran</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Nama Kategori</th></tr></thead>
+              <tbody id="tblPengeluaran">
+                <tr><td style="padding:2rem;text-align:center;color:#94a3b8">Memuat...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Tambah -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Tambah Kategori</span>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-error" id="modalAlert"></div>
+        <div class="form-group">
+          <label class="form-label">Nama Kategori *</label>
+          <input type="text" id="fNama" class="form-control" placeholder="Contoh: Penjualan Online" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Jenis *</label>
+          <select id="fJenis" class="form-control">
+            <option value="">-- Pilih Jenis --</option>
+            <option value="pemasukan">Pemasukan</option>
+            <option value="pengeluaran">Pengeluaran</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnCancel">Batal</button>
+        <button class="btn btn-primary" id="btnSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script>
+    requireAuth();
+    renderSidebar("kategori");
+
+    async function loadKategori() {
+      const res = await apiFetch("/api/kategori.php");
+      if (!res || res.status !== "success") return;
+
+      const pemasukan   = res.data.filter(k => k.jenis === "pemasukan");
+      const pengeluaran = res.data.filter(k => k.jenis === "pengeluaran");
+
+      const renderRows = (list, tbodyId) => {
+        const el = document.getElementById(tbodyId);
+        if (list.length === 0) {
+          el.innerHTML = `<tr><td style="padding:2rem;text-align:center;color:#94a3b8">Belum ada kategori</td></tr>`;
+          return;
+        }
+        el.innerHTML = list.map(k => `
+          <tr><td><span class="badge ${k.jenis==='pemasukan'?'badge-green':'badge-red'}">${k.nama_kategori}</span></td></tr>
+        `).join('');
+      };
+
+      renderRows(pemasukan,   "tblPemasukan");
+      renderRows(pengeluaran, "tblPengeluaran");
+    }
+
+    document.getElementById("btnTambah").addEventListener("click", () => {
+      document.getElementById("fNama").value  = "";
+      document.getElementById("fJenis").value = "";
+      document.getElementById("modalAlert").classList.remove("show");
+      document.getElementById("modalOverlay").classList.add("show");
+    });
+
+    ["modalClose", "btnCancel"].forEach(id => {
+      document.getElementById(id).addEventListener("click", () => {
+        document.getElementById("modalOverlay").classList.remove("show");
+      });
+    });
+
+    document.getElementById("btnSave").addEventListener("click", async () => {
+      const alertEl = document.getElementById("modalAlert");
+      alertEl.classList.remove("show");
+
+      const nama  = document.getElementById("fNama").value.trim();
+      const jenis = document.getElementById("fJenis").value;
+
+      if (!nama || !jenis) {
+        alertEl.textContent = "Nama kategori dan jenis wajib diisi.";
+        alertEl.classList.add("show");
+        return;
+      }
+
+      const res = await apiFetch("/api/kategori.php", "POST", { nama_kategori: nama, jenis });
+      if (res && res.status === "success") {
+        document.getElementById("modalOverlay").classList.remove("show");
+        loadKategori();
+      } else {
+        alertEl.textContent = res?.message || "Gagal menyimpan.";
+        alertEl.classList.add("show");
+      }
+    });
+
+    loadKategori();
+  </script>
+</body>
+</html>

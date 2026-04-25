@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daftar — KeuanganKu UMKM</title>
+  <meta name="description" content="Daftar akun baru sistem keuangan UMKM" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      padding: 1rem;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: radial-gradient(rgba(99,102,241,.15) 1px, transparent 1px);
+      background-size: 40px 40px; pointer-events: none;
+    }
+    .card {
+      width: 100%; max-width: 460px;
+      background: #1e293b; border-radius: 1.5rem;
+      padding: 2.5rem;
+      box-shadow: 0 30px 80px rgba(0,0,0,.5);
+      border: 1px solid rgba(255,255,255,.07);
+    }
+    .back-link { color: #818cf8; font-size: .85rem; text-decoration: none; display: inline-flex; align-items: center; gap: .4rem; margin-bottom: 1.5rem; }
+    .back-link:hover { text-decoration: underline; }
+    .form-title { color: #f1f5f9; font-size: 1.5rem; font-weight: 800; }
+    .form-subtitle { color: #94a3b8; font-size: .875rem; margin-bottom: 1.75rem; margin-top: .25rem; }
+
+    .alert { padding: .875rem 1rem; border-radius: .75rem; font-size: .875rem; margin-bottom: 1.25rem; display: none; }
+    .alert.error  { background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.3); color: #fca5a5; }
+    .alert.success{ background: rgba(34,197,94,.15);  border: 1px solid rgba(34,197,94,.3);  color: #86efac; }
+    .alert.show   { display: block; }
+
+    label { display: block; color: #cbd5e1; font-size: .8rem; font-weight: 600; margin-bottom: .4rem; }
+    .input-wrap { position: relative; margin-bottom: 1.1rem; }
+    .input-icon { position: absolute; left: .875rem; top: 50%; transform: translateY(-50%); color: #64748b; pointer-events: none; }
+    input {
+      width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: .75rem;
+      padding: .75rem .875rem .75rem 2.75rem; color: #f1f5f9;
+      font-size: .9rem; font-family: inherit; outline: none;
+      transition: border .2s, box-shadow .2s;
+    }
+    input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.2); }
+
+    .btn-submit {
+      width: 100%; padding: .875rem;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #fff; font-family: inherit; font-weight: 700;
+      font-size: .95rem; border: none; border-radius: .75rem;
+      cursor: pointer; transition: opacity .2s, transform .2s; margin-top: .5rem;
+    }
+    .btn-submit:hover { opacity: .9; transform: translateY(-1px); }
+    .btn-submit:disabled { opacity: .6; cursor: not-allowed; }
+    .link-text { text-align: center; color: #94a3b8; font-size: .85rem; margin-top: 1rem; }
+    .link-text a { color: #818cf8; font-weight: 600; text-decoration: none; }
+    .link-text a:hover { text-decoration: underline; }
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.3); border-top-color: #fff;
+      border-radius: 50%; animation: spin .6s linear infinite;
+      margin-right: .5rem; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <a href="index.html" class="back-link">← Kembali ke Login</a>
+    <div class="form-title">Buat Akun Baru</div>
+    <div class="form-subtitle">Daftarkan diri Anda untuk mulai mengelola keuangan UMKM</div>
+
+    <div class="alert error"   id="alertError"></div>
+    <div class="alert success" id="alertSuccess"></div>
+
+    <form id="registerForm">
+      <div>
+        <label for="nama_lengkap">Nama Lengkap</label>
+        <div class="input-wrap">
+          <span class="input-icon">✏️</span>
+          <input type="text" id="nama_lengkap" placeholder="Nama lengkap Anda" required />
+        </div>
+      </div>
+      <div>
+        <label for="username">Username</label>
+        <div class="input-wrap">
+          <span class="input-icon">👤</span>
+          <input type="text" id="username" placeholder="Minimal 3 karakter" required />
+        </div>
+      </div>
+      <div>
+        <label for="password">Password</label>
+        <div class="input-wrap">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="password" placeholder="Minimal 6 karakter" required />
+        </div>
+      </div>
+      <button type="submit" class="btn-submit" id="btnRegister">Daftar Sekarang</button>
+    </form>
+
+    <p class="link-text">Sudah punya akun? <a href="index.html">Masuk di sini</a></p>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    redirectIfLoggedIn();
+
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const btn  = document.getElementById("btnRegister");
+      const errEl = document.getElementById("alertError");
+      const okEl  = document.getElementById("alertSuccess");
+
+      errEl.classList.remove("show");
+      okEl.classList.remove("show");
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Mendaftar...';
+
+      const nama_lengkap = document.getElementById("nama_lengkap").value;
+      const username     = document.getElementById("username").value;
+      const password     = document.getElementById("password").value;
+
+      try {
+        const res = await apiFetch("/api/register.php", "POST", { nama_lengkap, username, password });
+
+        if (res.status === "success") {
+          localStorage.setItem("token", res.data.token);
+          localStorage.setItem("user",  JSON.stringify(res.data.user));
+
+          okEl.textContent = res.message + " Mengarahkan ke dashboard...";
+          okEl.classList.add("show");
+
+          setTimeout(() => (window.location.href = "dashboard.html"), 1200);
+        } else {
+          errEl.textContent = res.message;
+          errEl.classList.add("show");
+          btn.disabled = false;
+          btn.textContent = "Daftar Sekarang";
+        }
+      } catch {
+        errEl.textContent = "Gagal terhubung ke server.";
+        errEl.classList.add("show");
+        btn.disabled = false;
+        btn.textContent = "Daftar Sekarang";
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Laporan — KeuanganKu UMKM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/shared.css" />
+  <style>
+    .kat-bar { margin-bottom: .75rem; }
+    .kat-label { display: flex; justify-content: space-between; font-size: .8rem; font-weight: 600; color: #374151; margin-bottom: .3rem; }
+    .kat-track { background: #f1f5f9; border-radius: 99px; height: 10px; overflow: hidden; }
+    .kat-fill  { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #4f46e5, #7c3aed); transition: width .6s; }
+  </style>
+</head>
+<body>
+  <div id="sidebar-placeholder"></div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">📈 Laporan Keuangan</div>
+      <div class="topbar-right">
+        <input type="month" id="filterBulan" class="form-control" style="width:auto" />
+        <button class="btn btn-primary" id="btnLoad">Tampilkan</button>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Pemasukan</div>
+          <div class="stat-value stat-green" id="rMasuk">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Pengeluaran</div>
+          <div class="stat-value stat-red"   id="rKeluar">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Saldo Bersih</div>
+          <div class="stat-value stat-blue"  id="rSaldo">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Jumlah Transaksi</div>
+          <div class="stat-value" id="rJumlah" style="color:#1e293b">—</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+        <!-- Pengeluaran per Kategori -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">🏷️ Pengeluaran per Kategori</span></div>
+          <div class="card-body" id="katList">
+            <div style="color:#94a3b8;text-align:center;padding:1.5rem">Memuat...</div>
+          </div>
+        </div>
+
+        <!-- Transaksi Terbaru -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">⏱️ Transaksi Terbaru</span></div>
+          <div class="card-body" id="recentList">
+            <div style="color:#94a3b8;text-align:center;padding:1.5rem">Memuat...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script>
+    requireAuth();
+    renderSidebar("laporan");
+
+    const bulanInput = document.getElementById("filterBulan");
+    bulanInput.value = new Date().toISOString().slice(0, 7);
+
+    async function loadLaporan() {
+      const bulan = bulanInput.value;
+      const res = await apiFetch(`/api/laporan.php?bulan=${bulan}`);
+      if (!res || res.status !== "success") return;
+      const d = res.data;
+
+      // Stat cards
+      document.getElementById("rMasuk").textContent  = formatRupiah(d.ringkasan.total_masuk);
+      document.getElementById("rKeluar").textContent = formatRupiah(d.ringkasan.total_keluar);
+      document.getElementById("rSaldo").textContent  = formatRupiah(d.ringkasan.saldo);
+      document.getElementById("rJumlah").textContent = d.ringkasan.jumlah_transaksi + " transaksi";
+
+      // Pengeluaran per kategori (progress bar)
+      const maxKat = Math.max(...d.pengeluaran_per_kategori.map(k => k.total), 1);
+      const katEl  = document.getElementById("katList");
+
+      if (d.pengeluaran_per_kategori.length === 0) {
+        katEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">Tidak ada pengeluaran bulan ini</div></div>`;
+      } else {
+        katEl.innerHTML = d.pengeluaran_per_kategori.map(k => `
+          <div class="kat-bar">
+            <div class="kat-label">
+              <span>${k.nama_kategori}</span>
+              <span>${formatRupiah(k.total)}</span>
+            </div>
+            <div class="kat-track">
+              <div class="kat-fill" style="width:${(k.total/maxKat*100).toFixed(1)}%"></div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // Transaksi terbaru
+      const recentEl = document.getElementById("recentList");
+      if (d.transaksi_terbaru.length === 0) {
+        recentEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">Belum ada transaksi</div></div>`;
+      } else {
+        recentEl.innerHTML = d.transaksi_terbaru.map(t => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:.75rem 0;border-bottom:1px solid #f1f5f9">
+            <div>
+              <div style="font-size:.85rem;font-weight:600;color:#1e293b">${t.keterangan || t.nama_kategori || '—'}</div>
+              <div style="font-size:.75rem;color:#94a3b8">${formatTanggal(t.tanggal)}</div>
+            </div>
+            <div style="font-weight:700;font-size:.9rem;color:${t.jenis==='pemasukan'?'#16a34a':'#dc2626'}">
+              ${t.jenis==='pemasukan'?'+':'-'}${formatRupiah(t.jumlah)}
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    document.getElementById("btnLoad").addEventListener("click", loadLaporan);
+    loadLaporan();
+  </script>
+</body>
+</html>

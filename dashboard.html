@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — KeuanganKu UMKM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/shared.css" />
+  <style>
+    .welcome-banner {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      border-radius: 1rem; padding: 1.5rem 1.75rem; margin-bottom: 1.5rem;
+      color: #fff; display: flex; justify-content: space-between; align-items: center;
+    }
+    .welcome-title { font-size: 1.3rem; font-weight: 800; }
+    .welcome-sub   { font-size: .875rem; opacity: .8; margin-top: .2rem; }
+    .welcome-emoji { font-size: 3rem; }
+    .recent-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .875rem 0; border-bottom: 1px solid #f1f5f9;
+    }
+    .recent-item:last-child { border-bottom: none; }
+    .recent-left  { display: flex; align-items: center; gap: .875rem; }
+    .recent-icon  {
+      width: 38px; height: 38px; border-radius: .625rem;
+      display: flex; align-items: center; justify-content: center; font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .icon-masuk  { background: #dcfce7; }
+    .icon-keluar { background: #fee2e2; }
+    .recent-ket  { font-size: .85rem; font-weight: 600; color: #1e293b; }
+    .recent-tgl  { font-size: .75rem; color: #94a3b8; }
+    .recent-amt  { font-size: .9rem; font-weight: 700; }
+    .amt-masuk  { color: #16a34a; }
+    .amt-keluar { color: #dc2626; }
+
+    #loadingDash { text-align: center; padding: 2rem; color: #94a3b8; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <div id="sidebar-placeholder"></div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">Dashboard</div>
+      <div class="topbar-right">
+        <span class="topbar-badge">🟢 Online</span>
+        <span id="topbarDate" style="font-size:.8rem;color:#64748b;"></span>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <!-- Welcome Banner -->
+      <div class="welcome-banner">
+        <div>
+          <div class="welcome-title">Selamat datang, <span id="welcomeName">—</span>! 👋</div>
+          <div class="welcome-sub">Berikut ringkasan keuangan usaha Anda bulan ini.</div>
+        </div>
+        <div class="welcome-emoji">💰</div>
+      </div>
+
+      <!-- Stat Cards -->
+      <div class="stat-grid" id="statGrid">
+        <div class="stat-card">
+          <div class="stat-label">Total Pemasukan</div>
+          <div class="stat-value stat-green" id="statMasuk">Rp —</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Pengeluaran</div>
+          <div class="stat-value stat-red" id="statKeluar">Rp —</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Saldo Bersih</div>
+          <div class="stat-value stat-blue" id="statSaldo">Rp —</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Jumlah Transaksi</div>
+          <div class="stat-value" id="statJumlah" style="color:#1e293b;">—</div>
+        </div>
+      </div>
+
+      <!-- Transaksi Terbaru -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">⏱️ Transaksi Terbaru</span>
+          <a href="transaksi.html" class="btn btn-secondary btn-sm">Lihat Semua →</a>
+        </div>
+        <div class="card-body">
+          <div id="loadingDash">Memuat data...</div>
+          <div id="recentList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script>
+    requireAuth();
+    renderSidebar("dashboard");
+
+    // Tampilkan nama user & tanggal
+    const user = getCurrentUser();
+    document.getElementById("welcomeName").textContent = user.nama_lengkap || "Pengguna";
+    document.getElementById("topbarDate").textContent = new Date().toLocaleDateString("id-ID", {
+      weekday: "long", day: "numeric", month: "long", year: "numeric"
+    });
+
+    // Load data dashboard
+    async function loadDashboard() {
+      const bulan = new Date().toISOString().slice(0, 7); // "2026-04"
+      const res = await apiFetch(`/api/laporan.php?bulan=${bulan}`);
+
+      if (!res || res.status !== "success") return;
+      const d = res.data;
+
+      // Update stat cards
+      document.getElementById("statMasuk").textContent  = formatRupiah(d.ringkasan.total_masuk);
+      document.getElementById("statKeluar").textContent = formatRupiah(d.ringkasan.total_keluar);
+      document.getElementById("statSaldo").textContent  = formatRupiah(d.ringkasan.saldo);
+      document.getElementById("statJumlah").textContent = d.ringkasan.jumlah_transaksi + " transaksi";
+
+      // Warnai saldo merah jika negatif
+      if (d.ringkasan.saldo < 0) document.getElementById("statSaldo").style.color = "#dc2626";
+
+      // Render transaksi terbaru
+      document.getElementById("loadingDash").style.display = "none";
+      const listEl = document.getElementById("recentList");
+
+      if (d.transaksi_terbaru.length === 0) {
+        listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">Belum ada transaksi</div></div>`;
+        return;
+      }
+
+      listEl.innerHTML = d.transaksi_terbaru.map(t => `
+        <div class="recent-item">
+          <div class="recent-left">
+            <div class="recent-icon ${t.jenis === 'pemasukan' ? 'icon-masuk' : 'icon-keluar'}">
+              ${t.jenis === 'pemasukan' ? '📈' : '📉'}
+            </div>
+            <div>
+              <div class="recent-ket">${t.keterangan || t.nama_kategori || '—'}</div>
+              <div class="recent-tgl">${formatTanggal(t.tanggal)} · ${t.nama_kategori || '—'}</div>
+            </div>
+          </div>
+          <div class="recent-amt ${t.jenis === 'pemasukan' ? 'amt-masuk' : 'amt-keluar'}">
+            ${t.jenis === 'pemasukan' ? '+' : '-'}${formatRupiah(t.jumlah)}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>
